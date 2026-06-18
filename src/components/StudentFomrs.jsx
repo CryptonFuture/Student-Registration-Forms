@@ -7,6 +7,8 @@ export const StudentFomrs = () => {
     const [success, setSuccess] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [students, setStudents] = useState([]);
+    const [image, setImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const navigate = useNavigate();
 
@@ -22,6 +24,15 @@ export const StudentFomrs = () => {
         setFormData({ ...formData, [name]: value });
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+
+        if (file) {
+            setImage(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmitSuccess = (e) => {
         e.preventDefault();
 
@@ -29,7 +40,8 @@ export const StudentFomrs = () => {
 
         const newStudent = {
             id: Date.now(),
-            ...formData
+            ...formData,
+            image: imagePreview
         };
 
         existingStudents.push(newStudent);
@@ -41,7 +53,9 @@ export const StudentFomrs = () => {
 
         if (isSubmitted) return;
 
-
+        setFormData({});
+        setImage(null);
+        setImagePreview(null);
         setIsSubmitted(true);
 
         setFormData({
@@ -156,6 +170,7 @@ export const StudentFomrs = () => {
                                     <th>City</th>
                                     <th>Education</th>
                                     <th>Birthdate</th>
+                                    <th>image</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -172,6 +187,22 @@ export const StudentFomrs = () => {
                                             <td>{stu.city}</td>
                                             <td>{stu.education}</td>
                                             <td>{stu.birthdate}</td>
+                                            <td>
+                                                {stu.image ? (
+                                                    <img
+                                                        src={stu.image}
+                                                        alt="student"
+                                                        style={{
+                                                            width: "40px",
+                                                            height: "40px",
+                                                            borderRadius: "50%",
+                                                            objectFit: "cover"
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    "No Image"
+                                                )}
+                                            </td>
                                             <td>
                                                 <button
                                                     className="btn btn-sm btn-delete"
@@ -336,6 +367,33 @@ export const StudentFomrs = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="border rounded p-3 mb-4 bg-white text-center">
+
+                            <h5 className="mb-3">Student Image</h5>
+
+                            {imagePreview && (
+                                <img
+                                    src={imagePreview}
+                                    alt="Preview"
+                                    style={{
+                                        width: "120px",
+                                        height: "120px",
+                                        objectFit: "cover",
+                                        borderRadius: "50%",
+                                        marginBottom: "10px"
+                                    }}
+                                />
+                            )}
+
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="form-control"
+                                onChange={handleImageChange}
+                            />
+
                         </div>
 
                         <div className="text-center mt-4">

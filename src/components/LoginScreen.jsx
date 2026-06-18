@@ -1,5 +1,6 @@
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 
 export const LoginScreen = () => {
     const [username, setUsername] = useState("");
@@ -10,17 +11,25 @@ export const LoginScreen = () => {
         e.preventDefault();
 
         if (username === "admin" && password === "admin123") {
-            localStorage.setItem("role", "admin");
-            navigate("/forms");
+            Cookies.set("role", "admin", { expires: 7 });
+            Cookies.set("isAuthenticated", "true", { expires: 7 });
+            navigate("/forms" , { replace: true });
         }
         else if (username === "user" && password === "user123") {
-            localStorage.setItem("role", "user");
-            navigate("/forms");
+            Cookies.set("role", "user", { expires: 7 });
+            Cookies.set("isAuthenticated", "true", { expires: 7 });
+            navigate("/forms"  , { replace: true });
         }
         else {
             alert("Invalid credentials");
         }
     };
+
+    useEffect(() => {
+        if (Cookies.get("isAuthenticated")) {
+            navigate("/forms", { replace: true });
+        }
+    }, [])
 
   return (
       <div className="container my-5">

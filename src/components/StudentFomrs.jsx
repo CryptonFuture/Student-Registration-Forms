@@ -77,7 +77,27 @@ export const StudentFomrs = () => {
 
         setStudents(studentsData);
 
-    }, []);
+        if (!Cookies.get("isAuthenticated")) {
+            navigate("/", { replace: true });
+        }
+
+        window.history.pushState(null, "", window.location.href);
+
+        const handleBackButton = () => {
+            window.history.pushState(null, "", window.location.href);
+
+            if (!Cookies.get("isAuthenticated")) {
+                navigate("/", { replace: true });
+            }
+        };
+
+        window.addEventListener("popstate", handleBackButton);
+
+        return () => {
+            window.removeEventListener("popstate", handleBackButton);
+        };
+
+    }, [navigate]);
 
   const handleDelete = (id) => {
       const updatedStudents = students.filter(
@@ -97,10 +117,12 @@ export const StudentFomrs = () => {
 }
 
     const handleLogout = () => {
-        navigate("/");
+        Cookies.remove("role");
+        Cookies.remove("isAuthenticated");
+        navigate("/", { replace: true });
     };
 
-    const role = localStorage.getItem("role");
+    const role = Cookies.get("role");
 
     if (role === "admin") {
         const students = Cookies.get("students")

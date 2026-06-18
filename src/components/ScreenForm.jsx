@@ -1,5 +1,6 @@
 import React from 'react'
 import '../App.css'
+import { Link } from 'react-router-dom'
 
 export const ScreenForm = () => {
   return (
@@ -14,9 +15,9 @@ export const ScreenForm = () => {
           Student information has been saved successfully.
         </p>
 
-        <a href="/forms" className="btn btn-custom mt-4 text-white">
+        <Link to={"/forms"} className="btn btn-custom mt-4 text-white">
           Go Back
-        </a>
+        </Link>
 
       </div>
     </div>

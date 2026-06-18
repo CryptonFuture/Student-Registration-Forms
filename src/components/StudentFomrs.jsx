@@ -53,7 +53,7 @@ export const StudentFomrs = () => {
 
         setSuccess(true);
         navigate("/success");
-        
+
 
         setTimeout(() => {
             setSuccess(false);
@@ -71,19 +71,30 @@ export const StudentFomrs = () => {
             setStudents(JSON.parse(data));
         }
 
+        const studentsData = JSON.parse(
+            Cookies.get("students") || "[]"
+        );
+
+        setStudents(studentsData);
+
     }, []);
 
-   const handleDelete = (id) => {
-    const existingStudents = JSON.parse(Cookies.get("students") || "[]");
+  const handleDelete = (id) => {
+      const updatedStudents = students.filter(
+          (student) => student.id !== id
+      );
 
-    const updatedStudents = existingStudents.filter((stu) => stu.id !== id);
+      setStudents(updatedStudents);
 
-    Cookies.set("students", JSON.stringify(updatedStudents), { expires: 7 });
+      Cookies.set("students", JSON.stringify(updatedStudents), {
+          expires: 7,
+      });
 
-    setStudents(updatedStudents);
-    Cookies.remove("students")
-    Cookies.remove("studentSubmitted")
-};
+      if (updatedStudents.length === 0) {
+          Cookies.remove("students");
+          Cookies.remove("studentSubmitted");
+      }
+}
 
     const handleLogout = () => {
         navigate("/");
@@ -169,7 +180,7 @@ export const StudentFomrs = () => {
     return (
 
         <>
-          
+
 
             <div className="container my-5 fade-in">
                 <div className="card custom-card shadow-sm p-4">
@@ -315,7 +326,7 @@ export const StudentFomrs = () => {
                 </div>
             </div>
 
-           
+
         </>
 
     )

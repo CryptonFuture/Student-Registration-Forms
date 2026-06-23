@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import '../App.css'
+import { signOut, onAuthStateChanged } from "firebase/auth";
+import { db, auth } from "../config/firebase";
+import { collection, doc, deleteDoc, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 
 export const StudentFomrs = () => {
     const [success, setSuccess] = useState(false);
@@ -33,107 +36,211 @@ export const StudentFomrs = () => {
         }
     };
 
-    const handleSubmitSuccess = (e) => {
+    const uploadImage = async (file) => {
+        const formData = new FormData()
+
+        formData.append("file", file)
+        formData.append('upload_preset', 'chatty')
+        formData.append('cloud_name', 'fugen')
+
+        const res = await fetch(
+             "https://api.cloudinary.com/v1_1/fugen/image/upload",
+             {
+                method: 'POST',
+                body: formData
+             }
+        )
+
+        const data = await res.json()
+        return data.secure_url
+    }
+
+    const handleSubmitSuccess = async (e) => {
         e.preventDefault();
-
-        const existingStudents = JSON.parse(Cookies.get("students") || "[]");
-
-        const newStudent = {
-            id: Date.now(),
-            ...formData,
-            image: imagePreview
-        };
-
-        existingStudents.push(newStudent);
-
-        Cookies.set("students", JSON.stringify(existingStudents), { expires: 7 });
-
-
-        Cookies.set("studentSubmitted", "true", { expires: 7 });
 
         if (isSubmitted) return;
 
-        setFormData({});
-        setImage(null);
-        setImagePreview(null);
-        setIsSubmitted(true);
+        try {
+            const uid = auth.currentUser.uid;
 
-        setFormData({
-            studentName: '', address: '', birthdate: '', emailAddress: '', phoneNo: '', age: '', city: '', education: '',
-            motherName: '', motherPhone: '', motherWorkPhone: '', motherEmail: '', motherContactMethod: '',
-            fatherName: '', fatherPhone: '', fatherWorkPhone: '', fatherEmail: '', fatherContactMethod: '',
-            emergencyName: '', emergencyRelationship: '', emergencyPhone: '', emergencyWorkPhone: ''
-        });
+            const existingStudents = JSON.parse(Cookies.get("students") || "[]");
 
-        setSuccess(true);
-        navigate("/success");
+            const q = query(
+                collection(db, "students"),
+                where("userId", "==", uid)
+            );
+
+            const snapshot = await getDocs(q);
+
+            if (!snapshot.empty) {
+                alert("You have already submitted the form!");
+                return;
+            }
+
+             let imageUrl = "";
+
+             if(image) {
+                imageUrl = await uploadImage(image)
+             }
+
+            const newStudent = {
+                ...formData,
+                image: imageUrl,
+                studentSubmitted: true,
+                userId: uid,
+                createdAt: serverTimestamp()
+            };
+
+            await addDoc(
+                collection(db, "students"),
+                newStudent
+            );
+
+            existingStudents.push(newStudent);
+
+            Cookies.set("students", JSON.stringify(existingStudents), { expires: 7 });
 
 
-        setTimeout(() => {
-            setSuccess(false);
-        }, 3000);
+            Cookies.set("studentSubmitted", "true", { expires: 7 });
+
+
+            setFormData({});
+            setImage(null);
+            setImagePreview(null);
+            setIsSubmitted(true);
+
+            setFormData({
+                studentName: '', address: '', birthdate: '', emailAddress: '', phoneNo: '', age: '', city: '', education: '',
+                motherName: '', motherPhone: '', motherWorkPhone: '', motherEmail: '', motherContactMethod: '',
+                fatherName: '', fatherPhone: '', fatherWorkPhone: '', fatherEmail: '', fatherContactMethod: '',
+                emergencyName: '', emergencyRelationship: '', emergencyPhone: '', emergencyWorkPhone: ''
+            });
+
+            setSuccess(true);
+            navigate("/success");
+
+
+            setTimeout(() => {
+                setSuccess(false);
+            }, 3000);
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+        }
+
+       
     };
 
     useEffect(() => {
-        const submitted = Cookies.get("studentSubmitted");
-        const data = Cookies.get("students");
-        if (submitted) {
-            setIsSubmitted(true);
-        }
+        const checkSubmission = async () => {
 
-        if (data) {
-            setStudents(JSON.parse(data));
-        }
+            const uid = auth.currentUser?.uid;
 
-        const studentsData = JSON.parse(
-            Cookies.get("students") || "[]"
-        );
+            const q = query(
+                collection(db, "students"),
+                where("userId", "==", uid)
+            );
 
-        setStudents(studentsData);
+            const snapshot = await getDocs(q);
 
-        if (!Cookies.get("isAuthenticated")) {
-            navigate("/", { replace: true });
-        }
-
-        window.history.pushState(null, "", window.location.href);
-
-        const handleBackButton = () => {
-            window.history.pushState(null, "", window.location.href);
-
-            if (!Cookies.get("isAuthenticated")) {
-                navigate("/", { replace: true });
+            if (!snapshot.empty) {
+                setIsSubmitted(true);
             }
         };
 
-        window.addEventListener("popstate", handleBackButton);
+         checkSubmission();
 
-        return () => {
-            window.removeEventListener("popstate", handleBackButton);
-        };
+
+        const fetchStudents = async () => {
+        try {
+            const snapshot = await getDocs(collection(db, "students"));
+
+            const studentsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            setStudents(studentsData);
+
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+
+        if (!user) {
+            navigate("/", { replace: true });
+        } else {
+            fetchStudents();
+        }
+
+    });
+
+    window.history.pushState(null, "", window.location.href);
+
+    const handleBackButton = () => {
+        window.history.pushState(null, "", window.location.href);
+
+        if (!auth.currentUser) {
+            navigate("/", { replace: true });
+        }
+    };
+
+    window.addEventListener("popstate", handleBackButton);
+
+    return () => {
+        unsubscribe();
+        window.removeEventListener("popstate", handleBackButton);
+    };
+
+        
+   
 
     }, [navigate]);
 
-  const handleDelete = (id) => {
-      const updatedStudents = students.filter(
-          (student) => student.id !== id
-      );
+  const handleDelete = async (id) => { 
+      try {
+          if (!id) {
+              alert("Invalid Document ID");
+              return;
+          }
+          const studentDoc = doc(db, "students", id)
+          await deleteDoc(studentDoc);
 
-      setStudents(updatedStudents);
+          const updatedStudents = students.filter(
+              (student) => student.id !== id
+          );
 
-      Cookies.set("students", JSON.stringify(updatedStudents), {
-          expires: 7,
-      });
+          setStudents(updatedStudents);
 
-      if (updatedStudents.length === 0) {
-          Cookies.remove("students");
-          Cookies.remove("studentSubmitted");
+          Cookies.set("students", JSON.stringify(updatedStudents), {
+              expires: 7,
+          });
+
+          if (updatedStudents.length === 0) {
+              Cookies.remove("students");
+              Cookies.remove("studentSubmitted");
+          }
+
+          alert("Student Deleted Successfully");
+
+      } catch (error) {
+          console.error(error);
+          alert(error.message);
       }
+        
 }
 
-    const handleLogout = () => {
-        Cookies.remove("role");
+    const handleLogout = async () => {
+        await signOut(auth);
+
         Cookies.remove("isAuthenticated");
-        navigate("/", { replace: true });
+        Cookies.remove("uid");
+        Cookies.remove("email");
+        Cookies.remove("role");
+
+        navigate("/");
     };
 
     const role = Cookies.get("role");
@@ -170,27 +277,27 @@ export const StudentFomrs = () => {
                                     <th>City</th>
                                     <th>Education</th>
                                     <th>Birthdate</th>
-                                    <th>image</th>
+                                    {/* <th>image</th> */}
                                     <th>Action</th>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 {students.length > 0 ? (
-                                    students.map((stu, index) => (
-                                        <tr key={stu.id}>
+                                    students.map((student, index) => (
+                                        <tr key={student.id}>
                                             <td>{index + 1}</td>
-                                            <td>{stu.studentName}</td>
-                                            <td>{stu.emailAddress}</td>
-                                            <td>{stu.phoneNo}</td>
-                                            <td>{stu.age}</td>
-                                            <td>{stu.city}</td>
-                                            <td>{stu.education}</td>
-                                            <td>{stu.birthdate}</td>
-                                            <td>
-                                                {stu.image ? (
+                                            <td>{student.studentName}</td>
+                                            <td>{student.emailAddress}</td>
+                                            <td>{student.phoneNo}</td>
+                                            <td>{student.age}</td>
+                                            <td>{student.city}</td>
+                                            <td>{student.education}</td>
+                                            <td>{student.birthdate}</td>
+                                             <td>
+                                                {student.image ? (
                                                     <img
-                                                        src={stu.image}
+                                                        src={student.image}
                                                         alt="student"
                                                         style={{
                                                             width: "40px",
@@ -202,11 +309,11 @@ export const StudentFomrs = () => {
                                                 ) : (
                                                     "No Image"
                                                 )}
-                                            </td>
+                                            </td> 
                                             <td>
                                                 <button
                                                     className="btn btn-sm btn-delete"
-                                                    onClick={() => handleDelete(stu.id)}
+                                                    onClick={() => handleDelete(student.id)}
                                                 >
                                                     Delete
                                                 </button>
@@ -249,8 +356,6 @@ export const StudentFomrs = () => {
                     <h1 className="text-center title-main mb-4" style={{ color: '#1a433a', fontFamily: 'serif', fontWeight: 'bold' }}>
                         Student Information
                     </h1>
-
-
 
                     <form onSubmit={handleSubmitSuccess} style={{ pointerEvents: isSubmitted ? "none" : "auto", opacity: isSubmitted ? 0.6 : 1 }}>
 

@@ -4,6 +4,7 @@ import { ScreenForm } from "../components/ScreenForm";
 import { LoginScreen } from "../components/LoginScreen";
 import { PublicRoute } from "./PublicRoute";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { SignupScreen } from "../components/SignupScreen";
 
 
 export const Routers = () => {
@@ -15,11 +16,23 @@ export const Routers = () => {
               <LoginScreen />
           </PublicRoute>} 
         />
+
+        <Route path="/signup" element={
+          <PublicRoute>
+              <SignupScreen />
+          </PublicRoute>} 
+        />
+
         <Route path="/forms" element={
           <ProtectedRoute>
               <StudentFomrs />
           </ProtectedRoute>} />
-        <Route path="/success" element={<ScreenForm />} />
+          
+        <Route path="/success" element={
+          <ProtectedRoute>
+              <ScreenForm />
+          </ProtectedRoute>
+        } />
       </Routes>
     </BrowserRouter>
   )

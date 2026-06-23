@@ -1,27 +1,46 @@
 import React, {useEffect, useState} from 'react'
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { db, auth } from '../config/firebase'
+import { doc, getDoc } from "firebase/firestore";
 
 export const LoginScreen = () => {
-    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
 
-        if (username === "admin" && password === "admin123") {
-            Cookies.set("role", "admin", { expires: 7 });
-            Cookies.set("isAuthenticated", "true", { expires: 7 });
-            navigate("/forms" , { replace: true });
-        }
-        else if (username === "user" && password === "user123") {
-            Cookies.set("role", "user", { expires: 7 });
-            Cookies.set("isAuthenticated", "true", { expires: 7 });
-            navigate("/forms"  , { replace: true });
-        }
-        else {
-            alert("Invalid credentials");
+        try {
+            const userCredential = await signInWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
+
+            const userDoc = await getDoc(
+                doc(db, "users", userCredential.user.uid)
+            );
+
+            const userData = userDoc.data();
+
+            Cookies.set("role", userData.role, {
+                expires: 7
+            });
+
+            Cookies.set("isAuthenticated", "true", {
+                expires: 7
+            });
+
+            Cookies.set("uid", userData.uid, {
+                expires: 7
+            });
+
+            navigate("/forms", { replace: true });
+        } catch (error) {
+            alert(error.message)
         }
     };
 
@@ -29,7 +48,7 @@ export const LoginScreen = () => {
         if (Cookies.get("isAuthenticated")) {
             navigate("/forms", { replace: true });
         }
-    }, [])
+    }, [navigate])
 
   return (
       <div className="container my-5">
@@ -41,17 +60,19 @@ export const LoginScreen = () => {
                       <form onSubmit={handleLogin}>
                           <input
                               className="form-control my-2"
-                              placeholder="Username"
-                              onChange={(e) => setUsername(e.target.value)}
+                              placeholder="Email"
+                            value={email}
+                              onChange={(e) => setEmail(e.target.value)}
                           />
 
                           <input
                               type="password"
                               className="form-control my-2"
                               placeholder="Password"
+                              value={password}
                               onChange={(e) => setPassword(e.target.value)}
                           />
-
+                          <Link to={'/signup'}>Signup</Link>
                           <button className="btn btn-custom w-100 text-white mt-3">
                               Login
                           </button>

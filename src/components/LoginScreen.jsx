@@ -10,6 +10,8 @@ export const LoginScreen = () => {
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
+    const isDisabled = true;
+    
     const handleLogin = async (e) => {
         e.preventDefault();
 
@@ -72,7 +74,11 @@ export const LoginScreen = () => {
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                           />
-                          <Link to={'/signup'}>Signup</Link>
+                          <Link style={{
+                              pointerEvents: isDisabled ? "none" : "auto",
+                              color: isDisabled ? "gray" : "blue",
+                              cursor: isDisabled ? "not-allowed" : "pointer",
+                          }} to={'/signup'}>Signup</Link>
                           <button className="btn btn-custom w-100 text-white mt-3">
                               Login
                           </button>
